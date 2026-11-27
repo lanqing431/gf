@@ -1,104 +1,86 @@
-# The sub codes build and unit testing running workflow.
-# It maintains the ci of unimportant packages.
 name: GoFrame Sub CI
-
-
 on:
   push:
     branches:
-    - master
-    - develop
-    - personal/**
-    - feature/**
-    - enhance/**
-    - fix/**
-
+      - master
+      - develop
+      - personal/**
+      - feature/**
+      - enhance/**
+      - fix/**
   pull_request:
     branches:
-    - master
-    - develop
-    - personal/**
-    - feature/**
-    - enhance/**
-    - fix/**
-
-# This allows a subsequently queued workflow run to interrupt previous runs
+      - master
+      - develop
+      - personal/**
+      - feature/**
+      - enhance/**
+      - fix/**
+  workflow_dispatch: {}
 concurrency:
-  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  group: ${{ github.workflow }} @ ${{ github.event.pull_request.head.label ||
+    github.head_ref || github.ref }}
   cancel-in-progress: true
-
 env:
-  TZ: "Asia/Shanghai"
-  # for unit testing cases of some components that only execute on the latest go version.
+  TZ: Asia/Shanghai
   LATEST_GO_VERSION: "1.27"
-
 jobs:
   code-test:
     strategy:
       matrix:
-        # 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
-        # When adding new go version to the list, make sure:
-        # 1. Update the `LATEST_GO_VERSION` env variable.
-        # 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
-        go-version: [ "1.25", "1.26", "1.27" ]
-
+        go-version:
+          - "1.25"
+          - "1.26"
+          - "1.27"
     runs-on: ubuntu-latest
-
     steps:
-    - name: Setup Timezone
-      run:  sudo ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
-
-    - name: Checkout Repository
-      uses: actions/checkout@v7
-
-    - name: Start Minikube
-      uses: medyagh/setup-minikube@master
-
-    - name: Setup Golang ${{ matrix.go-version }}
-      uses: actions/setup-go@v7
-      with:
-        go-version: ${{ matrix.go-version }}
-        # Cache is managed manually below.
-        cache: false
-
-    - name: Get current month
-      id: cache-month
-      run: echo "month=$(date +%Y%m)" >> "$GITHUB_OUTPUT"
-
-    - name: Restore Go module cache
-      id: mod-cache
-      uses: actions/cache/restore@v6
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-mod-sub-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-mod-sub-
-
-    - name: Restore Go build cache
-      id: build-cache
-      uses: actions/cache/restore@v6
-      with:
-        path: ~/.cache/go-build
-        key: ${{ runner.os }}-go-build-sub-${{ matrix.go-version }}-${{ steps.cache-month.outputs.month }}
-        restore-keys: |
-          ${{ runner.os }}-go-build-sub-${{ matrix.go-version }}-
-
-    - name: Before Script
-      run:  bash .github/workflows/scripts/before_script.sh
-
-    - name: Build & Test
-      run: bash .github/workflows/scripts/ci-sub.sh
-
-    - name: Save Go module cache
-      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && matrix.go-version == env.LATEST_GO_VERSION && steps.mod-cache.outputs.cache-hit != 'true' }}
-      uses: actions/cache/save@v6
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ steps.mod-cache.outputs.cache-primary-key }}
-
-    - name: Save Go build cache
-      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && steps.build-cache.outputs.cache-hit != 'true' }}
-      uses: actions/cache/save@v6
-      with:
-        path: ~/.cache/go-build
-        key: ${{ steps.build-cache.outputs.cache-primary-key }}
+      - name: Setup Timezone
+        run: sudo ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+      - name: Start Minikube
+        uses: medyagh/setup-minikube@master
+      - name: Setup Golang ${{ matrix.go-version }}
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: false
+      - name: Get current month
+        id: cache-month
+        run: echo "month=$(date +%Y%m)" >> "$GITHUB_OUTPUT"
+      - name: Restore Go module cache
+        id: mod-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-mod-sub-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-mod-sub-
+      - name: Restore Go build cache
+        id: build-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/go-build
+          key: ${{ runner.os }}-go-build-sub-${{ matrix.go-version }}-${{
+            steps.cache-month.outputs.month }}
+          restore-keys: |
+            ${{ runner.os }}-go-build-sub-${{ matrix.go-version }}-
+      - name: Before Script
+        run: bash .github/workflows/scripts/before_script.sh
+      - name: Build & Test
+        run: bash .github/workflows/scripts/ci-sub.sh
+      - name: Save Go module cache
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' &&
+          matrix.go-version == env.LATEST_GO_VERSION &&
+          steps.mod-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ steps.mod-cache.outputs.cache-primary-key }}
+      - name: Save Go build cache
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' &&
+          steps.build-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.cache/go-build
+          key: ${{ steps.build-cache.outputs.cache-primary-key }}
