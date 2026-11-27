@@ -4,6 +4,8 @@
 // If a copy of the MIT was not distributed with this file,
 // You can obtain one at https://github.com/gogf/gf.
 
+// Primitive-slice conversion hooks for database records and nested JSON values.
+
 package gdb
 
 import (
@@ -44,12 +46,16 @@ func GetConverter() gconv.Converter {
 	return converter
 }
 
+// sliceTypeConverterFunc converts wrapped database values and plain JSON values.
 func sliceTypeConverterFunc(from any, to reflect.Value) (err error) {
-	v, ok := from.(iVal)
-	if !ok {
+	// Nested JSON values are already unwrapped and must use the same conversion path.
+	fromVal := from
+	if v, ok := from.(iVal); ok {
+		fromVal = v.Val()
+	}
+	if fromVal == nil {
 		return nil
 	}
-	fromVal := v.Val()
 	switch x := fromVal.(type) {
 	case []byte:
 		dst := to.Addr().Interface()
